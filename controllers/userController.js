@@ -11,6 +11,34 @@ const userSchema = z.object({
 
 
 export const addUser = async (req, res) => {
-    return res.status(201).json({ message: 'usuário cadastrado.' })
+    const insertQuery = 'INSERT INTO users (id, email, name, pass) VALUES (?, ?, ?, ?)';
+    const checkQuery = 'SELECT * FROM users WHERE   email = ?'
+
+    try{
+        const { email, name, pass } = userSchema.parse(req.body);
+
+        //verifica se o user já existe
+        const [existingUsers] = await pool.execute(checkQuery, [email]);
+        if(existingUsers.length > 0){
+            return res.status(400).json({ message: 'esse email já está sendo usado.' })
+        }
+
+        //gerando uuid
+        const id = uuidv4();
+        const values = [id, email, name, pass];
+
+        //cadastrando usuário
+        const [result] = await pool.execute(insertQuery, values)
+
+        return res.status(201).json({ message: 'usuário cadastrado' })
+
+    }catch(err){
+        // retornar erros de validação  
+        if (err instanceof z.ZodError) {
+            return res.status(400).json({ err: err.errors });
+          }
+          
+        return res.status(401).json({ message: 'erro no servidor.', err })
+    }
   
 }
