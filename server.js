@@ -10,7 +10,7 @@ app.use(express.json());
 
 
 //rotas definidas
-app.use('/cadastro', userRoutes);
+app.use('/', userRoutes);
 
 //rota home
 app.get('/', (req, res) => {
