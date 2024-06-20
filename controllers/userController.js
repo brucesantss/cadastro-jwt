@@ -22,25 +22,29 @@ export const addUser = async (req, res) => {
         //verifica se o user já existe
         const [existingUsers] = await pool.execute(checkQuery, [email]);
         if(existingUsers.length > 0){
-            return res.status(401).json({ message: 'esse email já está sendo usado.' })
+            return res.status(400).json({ message: 'esse email já está sendo usado.' })
         }
+
+        //hash de senha
+        const salt = await bcrypt.genSalt(12);
+        const passHash = await bcrypt.hash(pass, salt);
 
         //gerando uuid
         const id = uuidv4();
-        const values = [id, email, name, pass];
+        const values = [id, email, name, passHash];
 
         //cadastrando usuário
-        const [result] = await pool.execute(insertQuery, values)
+        await pool.execute(insertQuery, values)
 
         return res.status(201).json({ message: 'usuário cadastrado' })
 
     }catch(err){
         // retornar erros de validação  
         if (err instanceof z.ZodError) {
-            return res.status(401).json({ err: err.errors });
+            return res.status(400).json({ err: err.errors });
           }
           
-        return res.status(400).json({ message: 'erro no servidor.', err })
+        return res.status(500).json({ message: 'erro no servidor.', err })
     }
   
 }
@@ -60,17 +64,23 @@ export const loginUser = async (req, res) => {
 
     try{
 
-        const [rows, fields] = await pool.execute(findUser, [email]);
+        const [rows] = await pool.execute(findUser, [email]);
 
-        if(rows[0].pass === pass){
-            return res.status(200).json({ message: 'logando...' });
+        if(rows.length === 0){
+            return res.status(200).json({ message: 'usuário não encontrado.' });
         }
-        
-        return res.status(400).json({ message: 'usuário não encontrado.' });
 
+        const user = rows[0]; 
+        const compareHash = await bcrypt.compare(pass, user.pass);
+
+        if(!compareHash){
+            return res.status(400).json({ message: 'senha incorreta.' });
+        }
+
+        return res.status(200).json({ message: 'logando...' }); 
 
     }catch(err){
         console.log(err);
-        return res.status(400).json({ message: 'erro no servidor.' })
+        return res.status(400).json({ message: 'erro no servidor.' });
     }
 }
