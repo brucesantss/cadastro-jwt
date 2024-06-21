@@ -1,19 +1,16 @@
-import { z } from 'zod';
+//dependências
 import {v4 as uuidv4} from 'uuid';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { z } from 'zod';
 
+//configurações
 import pool from '../db/database.js';
 import 'dotenv/config';
-
-//shcema com zod + validação de entrada
-const userSchema = z.object({
-    name: z.string({ required_error: 'o nome é obrigatório.' }).nonempty('não pode ficar vazio.').min(3, "o nome de usuário deve ter pelo menos 3 caracteres."),
-    pass: z.string({ required_error: 'a senha é obrigatória' }).nonempty('não pode ficar vazio.').min(6, "a senha deve ter pelo menos 6 caracteres."),
-    email: z.string({ required_error: 'o email é obrigatório.' }).nonempty('não pode ficar vazio.').email("email inválido."),
-})
+import { userSchema } from '../models/userSchema.js';
 
 
+//cadastrar usuário
 export const addUser = async (req, res) => {
     const insertQuery = 'INSERT INTO users (id, email, name, pass) VALUES (?, ?, ?, ?)';
     const checkQuery = 'SELECT * FROM users WHERE email = ?'
@@ -43,7 +40,7 @@ export const addUser = async (req, res) => {
     }catch(err){
         // retornar erros de validação  
         if (err instanceof z.ZodError) {
-            return res.status(400).json({ err: err.errors });
+            return res.status(400).json({ err: err.errors[0].message });
           }
           
         return res.status(500).json({ message: 'erro no servidor.', err })
@@ -51,6 +48,7 @@ export const addUser = async (req, res) => {
   
 }
 
+//login usuário
 export const loginUser = async (req, res) => {
     const { email, pass } = req.body;
 
@@ -95,6 +93,7 @@ export const loginUser = async (req, res) => {
     }
 }
 
+//middleware JWT
 export const checkToken = async (req, res, next) => {
     const { id } = req.params;
 

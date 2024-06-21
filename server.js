@@ -1,6 +1,7 @@
 import express from "express";
-
 import userRoutes from './routes/userRoutes.js';
+
+//middleware
 import { checkToken } from "./controllers/userController.js";
 
 const app = express();
@@ -9,22 +10,20 @@ const port = process.env.PORT || 8080;
 //compatibilidade
 app.use(express.json());
 
-
 //rotas definidas
 app.use('/', userRoutes);
 
-//rota home
-app.get('/', (req, res) => {
-    
+//rota home - pública
+app.get('/', (req, res) => { 
     return res.status(200).json({ message: 'bem-vindo a home.' })
 })
 
-//rota configurações
+//rota configurações - privada
 app.post('/settings/:id', checkToken,  (req, res) => {
     return res.status(200).json({ message: 'bem-vindo as configurações.' })
 })
 
-
+//iniciando servidor
 app.listen(port, () => {
     console.log('server status: on-line')
 })
