@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import {v4 as uuidv4} from 'uuid';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 import pool from '../db/database.js';
+import 'dotenv/config';
 
 //shcema com zod + validação de entrada
 const userSchema = z.object({
@@ -14,7 +16,7 @@ const userSchema = z.object({
 
 export const addUser = async (req, res) => {
     const insertQuery = 'INSERT INTO users (id, email, name, pass) VALUES (?, ?, ?, ?)';
-    const checkQuery = 'SELECT * FROM users WHERE   email = ?'
+    const checkQuery = 'SELECT * FROM users WHERE email = ?'
 
     try{
         const { email, name, pass } = userSchema.parse(req.body);
@@ -60,7 +62,7 @@ export const loginUser = async (req, res) => {
         return res.status(401).json({ message: 'a senha é obrigatória.' });
     }
 
-    const findUser = 'SELECT * FROM users WHERE `email` = ?'; 
+    const findUser = 'SELECT * FROM users WHERE `email` = ?';
 
     try{
 
@@ -70,17 +72,58 @@ export const loginUser = async (req, res) => {
             return res.status(200).json({ message: 'usuário não encontrado.' });
         }
 
-        const user = rows[0]; 
+        const user = rows[0];
         const compareHash = await bcrypt.compare(pass, user.pass);
 
         if(!compareHash){
             return res.status(400).json({ message: 'senha incorreta.' });
         }
 
-        return res.status(200).json({ message: 'logando...' }); 
+        //gerendo jwt
+        const secret = process.env.SECRET;
+
+        const token = jwt.sign({
+            id: user.id
+        }, secret, {expiresIn: '1h'});
+
+        
+        return res.status(200).json({ msg: 'autenticação realizada com sucesso!', token });
 
     }catch(err){
         console.log(err);
         return res.status(400).json({ message: 'erro no servidor.' });
     }
 }
+
+export const checkToken = async (req, res, next) => {
+    const { id } = req.params;
+
+    const findUser = 'SELECT * FROM users WHERE id = ?';
+    const [user, fields] = await pool.execute(findUser, [id])
+
+    if(!user.length > 0){
+        return res.status(404).json({ msg: 'usuário não encontrado!' })  
+    }
+
+    const token = req.headers['authorization'].split(' ')[1];
+
+    if(!token){
+        return res.status(401).json({ msg: 'acesso negado!' })
+    }
+
+    try{
+       const secret = process.env.SECRET; 
+
+       const decoded = jwt.verify(token, secret);
+
+       if(decoded.id != id){
+        return res.status(401).json({ message: 'ID do token não corresponde ao ID do usuário.' });
+       }
+
+       next();
+
+    }catch(err){
+        return res.status(401).json({ msg: 'token inválido!' })
+    }
+  }
+

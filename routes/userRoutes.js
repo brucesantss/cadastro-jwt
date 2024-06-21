@@ -6,5 +6,5 @@ const router = express.Router();
 router
     .post('/cadastro', addUser)
     .post('/login', loginUser)
-
+    
 export default router;
