@@ -1,5 +1,6 @@
 import express from "express";
 import userRoutes from './routes/userRoutes.js';
+import cors from 'cors';
 
 //middleware
 import { checkToken } from "./controllers/userController.js";
@@ -8,6 +9,10 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 //compatibilidade
+app.use(cors({
+    origin: 'http://localhost:3000'
+}));
+
 app.use(express.json());
 
 //rotas definidas
